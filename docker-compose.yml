@@ -1,0 +1,70 @@
+# docker-composeのバージョン
+version: "3"
+
+services:
+  # コンテナの作成
+  web:
+    # コンテナ名
+    container_name: "nuxt-laravel-web"
+    # コンテナの作成に使用するDockerfileのパス
+    build:
+      dockerfile: "./docker/web/Dockerfile"
+    # ホスト側のポート:コンテナ側のポートを指定
+    ports:
+      - "8081:80"
+    # src配下のファイルをコンテナ内の~/va/www/html配下に配置
+    volumes:
+      - "./nuxt-laravel:/var/www/html"
+        # APPサーバー
+  app:
+    # コンテナ名
+    container_name: "nuxt-laravel-app"
+    # babelでのビルドでメモリを増やす必要性
+    mem_limit: 6g
+    # コンテナの作成に使用するDockerfileのパス
+    build:
+      dockerfile: "./docker/app/Dockerfile"
+    # srcディレクトリ内のファイルをコンテナ内の~/var/www/html配下にマウント
+    volumes:
+      - "./nuxt-laravel:/var/www/html"
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=nuxt-laravel-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_NAME:-nuxt-laravel}
+      - DB_USERNAME=${DB_USER:-user}
+      - DB_PASSWORD=${DB_PASS:-secret}
+
+    # DBサーバー
+  db:
+    # コンテナ名
+    container_name: nuxt-laravel-db
+    # コンテナの作成に使用するDockerfileのパス
+    build:
+      dockerfile: "./docker/db/Dockerfile"
+    # ホスト側のポート:コンテナ側のポートを指定
+    ports:
+      - 3308:3306
+    # 環境変数の指定
+    environment:
+      - MYSQL_DATABASE=${DB_NAME:-nuxt-laravel}
+      - MYSQL_USER=${DB_USER:-user}
+      - MYSQL_PASSWORD=${DB_PASS:-secret}
+      - MYSQL_ROOT_PASSWORD=${DB_PASS:-secret}
+    # srcディレクトリ内のファイルをコンテナ内の~/var/www/html配下にマウント
+    volumes:
+      - "./docker/db/data:/var/lib/mysql"
+
+  pma:
+    container_name: nuxt-laravel-pma
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_HOST=nuxt-laravel-db
+      - PMA_USER=user
+      - PMA_PASSWORD=secret
+    links:
+      - db
+    ports:
+      - 4041:80
+    volumes:
+      - ./phpmyadmin/sessions:/sessions
